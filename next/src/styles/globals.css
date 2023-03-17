@@ -1,0 +1,11 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  @apply bg-gray-300;
+}
+
+.btn {
+  @apply bg-blue-500 text-white px-6 py-2 rounded-lg text-sm hover:bg-blue-600 transition-all duration-200;
+}
