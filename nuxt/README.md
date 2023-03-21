@@ -2,6 +2,10 @@
 
 This Nuxt app is an example of how to implement the connection and interact with a Smart Contract deployed on the Injective Chain using the `injective-ts` module.
 
+More about `injective-ts` here: [injective-ts wiki](https://github.com/InjectiveLabs/injective-ts/wiki)
+
+Link to the Smart Contract Repo: [cw-counter](https://github.com/InjectiveLabs/cw-counter)
+
 ## 1. Preparation
 
 Start by installing the node module dependencies you are going to use (like `@injectivelabs/sdk-ts` etc...)
@@ -87,6 +91,7 @@ export const getAddresses = async (): Promise<string[]> => {
 ```
 
 In this example, we are calling this function from the `wallet` pinia store, when we click the `Connect Wallet` button.
+Note that this function returns an ethereum address which we need to convert to injective address using the `getInjectiveAddress` utility function.
 
 We will also need the `walletStrategy` for the `BroadcastClient`, including the networks used, which we defined earlier.
 

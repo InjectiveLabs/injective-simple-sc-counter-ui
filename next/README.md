@@ -1,38 +1,256 @@
-This is a [Next.js](https://nextjs.org/) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
+# Injective Counter Contract Example
 
-## Getting Started
+This Next.js app is an example of how to implement the connection and interact with a Smart Contract deployed on the Injective Chain using the `injective-ts` module.
 
-First, run the development server:
+More about `injective-ts` here: [injective-ts wiki](https://github.com/InjectiveLabs/injective-ts/wiki)
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
+Link to the Smart Contract Repo: [cw-counter](https://github.com/InjectiveLabs/cw-counter)
+
+## 1. Preparation
+
+Start by installing the node module dependencies you are going to use (like `@injectivelabs/sdk-ts` etc...)
+
+We can see the modules used in this example in `package.json`
+
+Unlike Nuxt,when using Next.js you dont need to configure anything, Next.js takes care of it automatically.
+
+## 2. Setting up the Services
+
+Next, we need to setup the services we are going to use.
+For interacting with the smart contract, we are going to use `ChainGrpcWasmApi` from `@injectivelabs/sdk-ts`.
+Also we will need the Network Endpoints we are going to use (Mainnet or Testnet), which we can find in `@injectivelabs/networks`
+
+Example:
+
+```js
+// src/services/services.ts
+
+import { ChainGrpcWasmApi } from "@injectivelabs/sdk-ts";
+import { Network, getNetworkEndpoints } from "@injectivelabs/networks";
+
+export const NETWORK = Network.TestnetK8s;
+export const ENDPOINTS = getNetworkEndpoints(NETWORK);
+
+export const chainGrpcWasmApi = new ChainGrpcWasmApi(ENDPOINTS.grpc);
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## 3. Wallet Strategy and Broadcast
 
-You can start editing the page by modifying `pages/index.tsx`. The page auto-updates as you edit the file.
+Next we need to setup Wallet Strategy And Broadcasting Client, by importing `WalletStrategy` and `MsgBroadcaster` from `@injectivelabs/wallet-ts`.
 
-[API routes](https://nextjs.org/docs/api-routes/introduction) can be accessed on [http://localhost:3000/api/hello](http://localhost:3000/api/hello). This endpoint can be edited in `pages/api/hello.ts`.
+The main purpose of the `@injectivelabs/wallet-ts` is to offer developers a way to have different wallet implementations on Injective. All of these wallets implementations are exposing the same `ConcreteStrategy` interface which means that users can just use these methods without the need to know the underlying implementation for specific wallets as they are abstracted away.
 
-The `pages/api` directory is mapped to `/api/*`. Files in this directory are treated as [API routes](https://nextjs.org/docs/api-routes/introduction) instead of React pages.
+To start, you have to make an instance of the WalletStrategy class which gives you the ability to use different wallets out of the box. You can switch the current wallet that is used by using the setWallet method on the walletStrategy instance.
+The default is `Metamask`.
 
-This project uses [`next/font`](https://nextjs.org/docs/basic-features/font-optimization) to automatically optimize and load Inter, a custom Google Font.
+```js
+// src/services/wallet.ts
 
-## Learn More
+import { WalletStrategy } from "@injectivelabs/wallet-ts";
+import { Web3Exception } from "@injectivelabs/exceptions";
 
-To learn more about Next.js, take a look at the following resources:
+import {
+  CHAIN_ID,
+  ETHEREUM_CHAIN_ID,
+  IS_TESTNET,
+  alchemyRpcEndpoint,
+  alchemyWsRpcEndpoint,
+} from "./constants";
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+export const walletStrategy = new WalletStrategy({
+  chainId: CHAIN_ID,
+  ethereumOptions: {
+    ethereumChainId: ETHEREUM_CHAIN_ID,
+    wsRpcUrl: alchemyWsRpcEndpoint,
+    rpcUrl: alchemyRpcEndpoint,
+  },
+});
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js/) - your feedback and contributions are welcome!
+To get the addresses from the wallet we can use the following function:
 
-## Deploy on Vercel
+```js
+export const getAddresses = async (): Promise<string[]> => {
+  const addresses = await walletStrategy.getAddresses();
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+  if (addresses.length === 0) {
+    throw new Web3Exception(
+      new Error("There are no addresses linked in this wallet.")
+    );
+  }
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/deployment) for more details.
+  return addresses;
+};
+```
+
+When we call this function it opens up your Wallet (Default: Metamask) so we can connect, and we can store the return value in a variable for later use.
+Note that this returns and array of Ethereum Addresses, which we can convert to injective addresses using the `getInjectiveAddress` utility function.
+
+Here is how our `walletContextProvider` looks like:
+
+```js
+const WalletContextProvider = (props: Props) => {
+  const [ethereumAddress, setEthereumAddress] = useState("");
+  const [injectiveAddress, setInjectiveAddress] = useState("");
+
+  async function connectWallet() {
+    const [address] = await getAddresses();
+    setEthereumAddress(address);
+    setInjectiveAddress(getInjectiveAddress(address));
+  }
+
+  return (
+    <WalletContext.Provider
+      value={{
+        ethereumAddress,
+        injectiveAddress,
+        connectWallet,
+      }}
+    >
+      {props.children}
+    </WalletContext.Provider>
+  );
+};
+```
+
+We will also need the `walletStrategy` for the `BroadcastClient`, including the networks used, which we defined earlier.
+
+```js
+// src/services/services.ts
+
+import { Network } from "@injectivelabs/networks";
+export const NETWORK = Network.TestnetK8s;
+
+export const msgBroadcastClient = new MsgBroadcaster({
+  walletStrategy,
+  network: NETWORK,
+});
+```
+
+## 4. Querying the Smart Contract
+
+Now everything is setup and we can interact with the Smart Contract.
+
+We will begin by Quering the The Smart Contract to get the current count using the `chainGrpcWasmApi` service we created earlier,
+and calling `get_count` on the Smart Contract.
+
+We have created a function in our `CounterContextProvider` to do that:
+
+```js
+// src/context/CounterContextProvider.tsx
+
+async function fetchCount() {
+    try {
+      const response = (await chainGrpcWasmApi.fetchSmartContractState(
+        COUNTER_CONTRACT_ADDRESS,
+        toBase64({ get_count: {} })
+      )) as { data: string };
+
+      const { count } = fromBase64(response.data) as { count: number };
+      setCount(count);
+    } catch (e) {
+      alert((e as any).message);
+    }
+  }
+```
+
+## 5. Modifying the State
+
+Next we will modify the `count` state.
+We can do that by sending messages to the chain using the `Broadcast Client` we created earlier and `MsgExecuteContractCompat` from `@injectivelabs/sdk-ts`
+
+The Smart Contract we use for this example has 2 methods for altering the state:
+
+- `increment`
+- `reset`
+
+`increment` increment the count by 1, and `reset` sets the count to a given value.
+Note that `reset` can only be called if you are the creator of the smart contract.
+
+We have created 2 functions for these in our `CounterContextProvider` respectively.
+
+When we call these functions, our wallet opens up to sign the message/transaction and broadcasts it.
+
+```js
+// src/context/CounterContextProvider.tsx
+
+async function incrementCount() {
+    if (!injectiveAddress) {
+      alert("No Wallet Connected");
+      return;
+    }
+
+    setStatus(Status.Loading);
+
+    try {
+
+    // Preparing the message
+
+      const msg = MsgExecuteContractCompat.fromJSON({
+        contractAddress: COUNTER_CONTRACT_ADDRESS,
+        sender: injectiveAddress,
+        msg: {
+          increment: {},
+        },
+      });
+
+    // Signing and broadcasting the message
+
+      await msgBroadcastClient.broadcast({
+        msgs: msg,
+        injectiveAddress: injectiveAddress,
+      });
+      fetchCount();
+    } catch (e) {
+      alert((e as any).message);
+    } finally {
+      setStatus(Status.Idle);
+    }
+  }
+```
+
+```js
+// src/context/CounterContextProvider.tsx
+
+async function setContractCounter(number: string) {
+    if (!injectiveAddress) {
+      alert("No Wallet Connected");
+      return;
+    }
+
+    if (Number(number) > 100 || Number(number) < -100) {
+      alert("Number must we within -100 and 100");
+      return;
+    }
+
+    setStatus(Status.Loading);
+
+    try {
+
+    // Preparing the message
+
+      const msg = MsgExecuteContractCompat.fromJSON({
+        contractAddress: COUNTER_CONTRACT_ADDRESS,
+        sender: injectiveAddress,
+        msg: {
+          reset: {
+            count: parseInt(number, 10),
+          },
+        },
+      });
+
+    // Signing and broadcasting the message
+
+      await msgBroadcastClient.broadcast({
+        msgs: msg,
+        injectiveAddress: injectiveAddress,
+      });
+
+      fetchCount();
+    } catch (e) {
+      alert((e as any).message);
+    } finally {
+      setStatus(Status.Idle);
+    }
+  }
+```
