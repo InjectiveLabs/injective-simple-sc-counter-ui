@@ -62,7 +62,7 @@ function handleSetCount() {
       <div class="py-10">
         <h1 class="text-center text-2xl">The count is:</h1>
         <h3 class="text-3xl font-bold text-center">
-          {{ status.isLoading() ? "Loading.." : counterStore.count }}
+          {{ status.isLoading() ? "Loading ..." : counterStore.count }}
         </h3>
       </div>
       <div class="py-2">
@@ -70,8 +70,9 @@ function handleSetCount() {
           :disabled="status.isLoading()"
           @click="handleIncrementCount"
           class="w-full"
-          >+</Button
         >
+          +
+        </Button>
       </div>
       <div class="flex gap-2">
         <input
@@ -80,9 +81,9 @@ function handleSetCount() {
           step="1"
           class="border rounded-lg p-2"
         />
-        <Button @click="handleSetCount" :disabled="status.isLoading()"
-          >Set Count</Button
-        >
+        <Button @click="handleSetCount" :disabled="status.isLoading()">
+          Set Count
+        </Button>
       </div>
       <div class="flex justify-center py-5">
         <a
@@ -90,8 +91,9 @@ function handleSetCount() {
           target="_blank"
           referrerpolicy="no-referrer"
           href="https://testnet.explorer.injective.network/contract/inj1t8rhq5vcxqgw68ldg0k2mjxjvzshuah6tnugvy/"
-          >View Contract on Explorer</a
         >
+          View Contract on Explorer
+        </a>
       </div>
     </Card>
   </Container>

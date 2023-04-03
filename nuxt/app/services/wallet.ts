@@ -1,13 +1,11 @@
 import { WalletStrategy } from "@injectivelabs/wallet-ts";
 import { Web3Exception } from "@injectivelabs/exceptions";
-
 import {
   CHAIN_ID,
   ETHEREUM_CHAIN_ID,
-  IS_TESTNET,
   alchemyRpcEndpoint,
   alchemyWsRpcEndpoint,
-} from "@/app/constants";
+} from "@/app/utils/constants";
 
 export const walletStrategy = new WalletStrategy({
   chainId: CHAIN_ID,

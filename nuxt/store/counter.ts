@@ -1,15 +1,15 @@
 import { defineStore } from "pinia";
-import { chainGrpcWasmApi } from "@/app/services";
-import { COUNTER_CONTRACT_ADDRESS } from "~~/app/constants";
+import { chainGrpcWasmApi } from "@/app/Services";
+import { COUNTER_CONTRACT_ADDRESS } from "@/app/utils/constants";
 import {
-  fromBase64,
   toBase64,
+  fromBase64,
   MsgExecuteContractCompat,
 } from "@injectivelabs/sdk-ts";
 import { useWalletStore } from "./wallet";
-import { msgBroadcastClient } from "@/app/services";
+import { msgBroadcastClient } from "@/app/Services";
 import { sleep } from "@injectivelabs/utils";
-import { backupPromiseCall } from "~~/app/utils";
+import { backupPromiseCall } from "@/app/utils/index";
 
 export const useCounterStore = defineStore("counter", {
   state: () => ({
@@ -19,12 +19,14 @@ export const useCounterStore = defineStore("counter", {
     async fetchCount() {
       const counterStore = useCounterStore();
 
-      const response = (await chainGrpcWasmApi.fetchSmartContractState(
+      const response = await chainGrpcWasmApi.fetchSmartContractState(
         COUNTER_CONTRACT_ADDRESS,
         toBase64({ get_count: {} })
-      )) as { data: string };
+      );
 
-      const { count } = fromBase64(response.data) as { count: number };
+      const { count } = fromBase64(
+        Buffer.from(response.data).toString("base64")
+      ) as { count: number };
 
       counterStore.$patch({ count });
     },
