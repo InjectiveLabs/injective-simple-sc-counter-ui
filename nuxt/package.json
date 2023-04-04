@@ -7,6 +7,7 @@
     "generate": "nuxt generate",
     "preview": "nuxt preview",
     "prepare": "nuxt prepare",
+    "analyze": "nuxt analyze",
     "clean-up": "rm -rf dist && rm -rf .output && rm -rf .nuxt && rm -rf ./node_modules/.cache/nuxt && rm -rf ./node_modules/.vite"
   },
   "devDependencies": {
@@ -21,16 +22,21 @@
   },
   "dependencies": {
     "@bangjelkoski/node-stdlib-browser": "^0.0.1",
-    "@injectivelabs/exceptions": "^1.10.1",
-    "@injectivelabs/networks": "^1.10.1",
-    "@injectivelabs/sdk-ts": "^1.10.23",
-    "@injectivelabs/sdk-ui-ts": "^1.10.28",
-    "@injectivelabs/ts-types": "^1.10.0",
-    "@injectivelabs/utils": "^1.10.1",
-    "@injectivelabs/wallet-ts": "^1.10.25",
+    "@injectivelabs/exceptions": "^1.10.2",
+    "@injectivelabs/networks": "^1.10.2",
+    "@injectivelabs/sdk-ts": "^1.10.25",
+    "@injectivelabs/sdk-ui-ts": "^1.10.31",
+    "@injectivelabs/ts-types": "^1.10.1",
+    "@injectivelabs/utils": "^1.10.2",
+    "@injectivelabs/wallet-ts": "^1.10.27",
     "@pinia/nuxt": "^0.4.7",
     "@vueuse/nuxt": "9.13.0",
     "buffer": "^6.0.3",
     "pinia": "^2.0.33"
+  },
+  "resolutions": {
+    "@ethereumjs/tx": "^4.1.1",
+    "**/libsodium": "npm:@bangjelkoski/noop",
+    "**/libsodium-wrappers": "npm:@bangjelkoski/noop"
   }
 }
